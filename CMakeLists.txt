@@ -5,6 +5,8 @@ project(VoxelCraft VERSION 0.0.1)
 add_executable(${PROJECT_NAME} main.cpp 
     external/glad/src/glad.c
     shaders/src/shaderClass.cpp
+    buffers/src/EBO.cpp
+    buffers/src/VAO.cpp
     buffers/src/VBO.cpp
 )
 

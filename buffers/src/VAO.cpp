@@ -1,5 +1,6 @@
 #include "VAO.h"
 
+// VAO that generates a VAO ID
 VAO::VAO()
 {
     glGenVertexArrays(1, &ID);

@@ -64,15 +64,21 @@ int main()
     // In this case the viewport goes from (0,0) to (800,800)
     glViewport(0, 0, 800, 800);
 
-    Shader shaderProgram("default.vert", "default.frag");
 
+    // Generates Shader object using shaders default.vert and default.frag
+    Shader shaderProgram("shaders/resources/default.vert", "shaders/resources/default.frag");
+
+    // Generates Vertex Array Object and binds it
     VAO VAO1;
     VAO1.Bind();
 
+    // Generates Vertex Buffer Object and links it to vertices
     VBO VBO1(vertices, sizeof(vertices));
 
+    // Generates Element Buffer Object and links it to indices
     EBO EBO1(indices, sizeof(indices));
 
+    // Links VBO to VAO
     VAO1.LinkVBO(VBO1, 0);
 
     VAO1.Unbind();
