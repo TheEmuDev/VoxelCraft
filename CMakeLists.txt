@@ -11,8 +11,10 @@ add_executable(${PROJECT_NAME} main.cpp
 )
 
 add_subdirectory(external/glfw)
+add_subdirectory(external/cglm)
 
 target_include_directories(${PROJECT_NAME} 
+    PUBLIC external/cglm/include
     PUBLIC external/glfw/include
     PUBLIC external/glad/include
     PUBLIC shaders/include
@@ -20,10 +22,11 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_directories(${PROJECT_NAME}
+    PUBLIC external/cglm/src
     PUBLIC external/glfw/src
     PUBLIC external/glad/src
     PUBLIC shaders/src
     PUBLIC buffers/src
 )
 
-target_link_libraries(${PROJECT_NAME} glfw m)
+target_link_libraries(${PROJECT_NAME} glfw m cglm)
