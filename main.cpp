@@ -1,31 +1,32 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <math.h>
+#include <stb/stb_image.h>
 
+#include "texture.h"
 #include "shaderClass.h"
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 
 // Vertice Coordinates
-GLfloat vertices[] = {
-    //          COORDINATES                       /         COLORS        //
-    -0.5f, -0.5f * float(sqrt(3)) / 3,      0.0f,    0.8f, 0.3f,  0.02f,  // Lower left corner
-     0.5f, -0.5f * float(sqrt(3)) / 3,      0.0f,    0.8f, 0.3f,  0.02f,  // Lower right corner
-     0.0f,  0.5f * float(sqrt(3)) * 2 / 3,  0.0f,    1.0f, 0.6f,  0.32f,  // Upper corner
-    -0.25f, 0.5f * float(sqrt(3)) / 6,      0.0f,    0.9f, 0.45f, 0.17f,  // Inner left
-     0.25f, 0.5f * float(sqrt(3)) / 6,      0.0f,    0.9f, 0.45f, 0.17f,  // Inner right
-     0.0f, -0.5f * float(sqrt(3)) / 3,      0.0f,    0.8f, 0.3f,  0.02f   // Inner down
-};  
+GLfloat vertices[] =
+    {
+        // COORDINATES  x3 /    COLORS   x3  / TexCoord x2 //
+        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Lower left corner
+        -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,   // Upper left corner
+        0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,    // Upper right corner
+        0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f    // Lower right corner
+};
 
-GLuint indices[] = {
-    0, 3, 5, // lower left triangle
-    3, 2, 4, // lower right triangle
-    5, 4, 1  // upper triangle
+// Indices for vertices order
+GLuint indices[] =
+    {
+        0, 2, 1, // Upper triangle
+        0, 3, 2  // Lower triangle
 };
 
 int main()
@@ -61,6 +62,7 @@ int main()
     // Introduce window into current context
     glfwMakeContextCurrent(window);
 
+    // Set callback method to be called everytime window is resized
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     //Load GLAD so it configures OpenGL
@@ -69,7 +71,6 @@ int main()
     // Specify the viewport of OpenGL in the Window
     // In this case the viewport goes from (0,0) to (800,800)
     glViewport(0, 0, 800, 800);
-
 
     // Generates Shader object using shaders default.vert and default.frag
     Shader shaderProgram("shaders/resources/default.vert", "shaders/resources/default.frag");
@@ -85,15 +86,19 @@ int main()
     EBO EBO1(indices, sizeof(indices));
 
     // Links VBO to VAO
-    VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
-    VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 8 * sizeof(float), (void *)0);
+    VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+    VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 8 * sizeof(float), (void *)(6 * sizeof(float)));
 
     VAO1.Unbind();
     VBO1.Unbind();
     EBO1.Unbind();
-    
 
     GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
+
+    std::string path = "resources\\textures\\mkDragon.png";
+    Texture testImage(path.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+    testImage.TexUnit(shaderProgram, "tex0", 0);
 
     // Main while loop
     while (!glfwWindowShouldClose(window))
@@ -104,21 +109,26 @@ int main()
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         // Clean the back buffer and assign the new color to it
         glClear(GL_COLOR_BUFFER_BIT);
-
+        // Tell OpenGL which Shader Program to use
         shaderProgram.Activate();
-        glUniform1f(uniID, 0.5f);
+        // Assigns a value to the uniform; NOTE: Must always be done after activating the shader program
+        glUniform1f(uniID, 0.0f);
+        // Binds texture so that it appears in rendering
+        testImage.Bind();
+        // Binds the VAO so OpenGL knows to use it
         VAO1.Bind();
-
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+        // Draw primitives, number of indices, datatype of indices, index of indices
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Swap the back buffer with the front buffer
         glfwSwapBuffers(window);
-
-        
+        // take care of all GLFW events
         glfwPollEvents();
     }
 
     VAO1.Delete();
     VBO1.Delete();
     EBO1.Delete();
+    testImage.Delete();
     shaderProgram.Delete();
 
     // Delete window before ending the program
@@ -132,14 +142,14 @@ int main()
 // Handle input events
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
     }
 }
 
 // update the viewport after window changes size
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }

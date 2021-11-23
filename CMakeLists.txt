@@ -8,10 +8,12 @@ add_executable(${PROJECT_NAME} main.cpp
     buffers/src/EBO.cpp
     buffers/src/VAO.cpp
     buffers/src/VBO.cpp
+    texture.cpp
 )
 
 add_subdirectory(external/glfw)
 add_subdirectory(external/cglm)
+add_subdirectory(external/stb)
 
 target_include_directories(${PROJECT_NAME} 
     PUBLIC external/cglm/include
@@ -29,4 +31,4 @@ target_link_directories(${PROJECT_NAME}
     PUBLIC buffers/src
 )
 
-target_link_libraries(${PROJECT_NAME} glfw m cglm)
+target_link_libraries(${PROJECT_NAME} glfw m cglm stb)
