@@ -4,7 +4,7 @@ project(VoxelCraft VERSION 0.0.1)
 
 add_executable(${PROJECT_NAME} main.cpp 
     external/glad/src/glad.c
-    shaders/src/shaderClass.cpp
+    shader/src/shaderClass.cpp
     buffers/src/EBO.cpp
     buffers/src/VAO.cpp
     buffers/src/VBO.cpp
@@ -19,7 +19,7 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC external/cglm/include
     PUBLIC external/glfw/include
     PUBLIC external/glad/include
-    PUBLIC shaders/include
+    PUBLIC shader/include
     PUBLIC buffers/include
 )
 
@@ -27,7 +27,7 @@ target_link_directories(${PROJECT_NAME}
     PUBLIC external/cglm/src
     PUBLIC external/glfw/src
     PUBLIC external/glad/src
-    PUBLIC shaders/src
+    PUBLIC shader/src
     PUBLIC buffers/src
 )
 
