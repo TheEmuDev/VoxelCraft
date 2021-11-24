@@ -1,7 +1,10 @@
 #include <iostream>
+#include <filesystem>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
+#include <cglm/cglm.h>
+#include <cglm/struct.h>
 
 #include "texture.h"
 #include "shaderClass.h"
@@ -12,21 +15,36 @@
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 
+const unsigned int width = 800;
+const unsigned int height = 800;
+
+const std::string shadersPath = "\\resources\\shaders\\";
+const std::string texturesPath = "\\resources\\textures\\";
+
+float dltRot = 0.5f;
+
+vec3 yUp = {0.0f, 1.0f, 0.0f};
+vec3 temp = {0.0f, -0.5f, -2.0f};
+
 // Vertice Coordinates
 GLfloat vertices[] =
     {
-        // COORDINATES  x3 /    COLORS   x3  / TexCoord x2 //
-        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Lower left corner
-        -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,   // Upper left corner
-        0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,    // Upper right corner
-        0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f    // Lower right corner
-};
+        -0.5f, 0.0f,  0.5f,      0.83f, 0.70f, 0.44f,     0.0f, 0.0f,
+        -0.5f, 0.0f, -0.5f,      0.83f, 0.70f, 0.44f,     5.0f, 0.0f,
+         0.5f, 0.0f, -0.5f,      0.83f, 0.70f, 0.44f,     0.0f, 0.0f,
+         0.5f, 0.0f,  0.5f,      0.83f, 0.70f, 0.44f,     5.0f, 0.0f,
+         0.0f, 0.8f,  0.0f,      0.92f, 0.86f, 0.76f,     2.5f, 5.0f
+    };
 
 // Indices for vertices order
 GLuint indices[] =
     {
-        0, 2, 1, // Upper triangle
-        0, 3, 2  // Lower triangle
+        0, 1, 2,
+        0, 2, 3,
+        0, 1, 4,
+        1, 2, 4,
+        2, 3, 4,
+        3, 0, 4
 };
 
 int main()
@@ -47,8 +65,8 @@ int main()
     // This means we are only using the modern functions
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create window object with length and width of 800 pixels and the name "VoxelCraft"
-    GLFWwindow *window = glfwCreateWindow(800, 800, "VoxelCraft", NULL, NULL);
+    // Create window object with length and width of 500 pixels and the name "VoxelCraft"
+    GLFWwindow *window = glfwCreateWindow(width, height, "VoxelCraft", NULL, NULL);
 
     // If window object fails to initialize,
     // Exit with error message and -1 return code if initialization fails
@@ -70,10 +88,11 @@ int main()
 
     // Specify the viewport of OpenGL in the Window
     // In this case the viewport goes from (0,0) to (800,800)
-    glViewport(0, 0, 800, 800);
+    glViewport(0, 0, width, height);
 
     // Generates Shader object using shaders default.vert and default.frag
-    Shader shaderProgram("resources/shaders/default.vert", "resources/shaders/default.frag");
+    std::string parentPath = std::filesystem::current_path().parent_path().string();
+    Shader shaderProgram((parentPath + shadersPath + "default.vert").c_str(), (parentPath + shadersPath + "default.frag").c_str());
 
     // Generates Vertex Array Object and binds it
     VAO VAO1;
@@ -96,9 +115,15 @@ int main()
 
     GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
-    std::string path = "resources\\textures\\mkDragon.png";
-    Texture testImage(path.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+    std::string texPath = parentPath + texturesPath + "grass_block_test.png";
+    Texture testImage(texPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
     testImage.TexUnit(shaderProgram, "tex0", 0);
+
+    float rotation = 0.0f;
+    
+    double prevTime = glfwGetTime();
+
+    glEnable(GL_DEPTH_TEST);
 
     // Main while loop
     while (!glfwWindowShouldClose(window))
@@ -108,17 +133,40 @@ int main()
         // Specify the color of the background
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         // Clean the back buffer and assign the new color to it
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Tell OpenGL which Shader Program to use
         shaderProgram.Activate();
+
+        double currentTime = glfwGetTime();
+        if(currentTime - prevTime >= 1/60)
+        {
+            rotation += dltRot;
+            prevTime = currentTime;
+        }
+
+        mat4 model = GLM_MAT4_IDENTITY_INIT;
+        mat4 view = GLM_MAT4_IDENTITY_INIT;
+        mat4 proj = GLM_MAT4_IDENTITY_INIT;
+
+        glm_rotate(model, glm_rad(rotation), yUp);
+        glm_translate(view, temp);
+        glm_perspective(glm_rad(45.0f), (float)width/height, 0.1f, 100.0f, proj);
+
+        int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model[0]);
+        int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view[0]);
+        int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, proj[0]);
+
         // Assigns a value to the uniform; NOTE: Must always be done after activating the shader program
-        glUniform1f(uniID, 0.0f);
+        glUniform1f(uniID, 0.5f);
         // Binds texture so that it appears in rendering
         testImage.Bind();
         // Binds the VAO so OpenGL knows to use it
         VAO1.Bind();
         // Draw primitives, number of indices, datatype of indices, index of indices
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, sizeof(indices)/sizeof(int), GL_UNSIGNED_INT, 0);
         // Swap the back buffer with the front buffer
         glfwSwapBuffers(window);
         // take care of all GLFW events
@@ -145,6 +193,16 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        dltRot = -0.5f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        dltRot = 0.5f;
     }
 }
 

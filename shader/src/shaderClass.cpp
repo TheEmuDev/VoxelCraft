@@ -78,14 +78,15 @@ void Shader::compileErrors(unsigned int shader, const char *type)
 {
     // Stores status of compilation
     GLint hasCompiled;
+    const int LOG_LENGTH = 1024;
     // Character array to store error message in
-    char infoLog[1024];
+    char infoLog[LOG_LENGTH];
     if (type != "PROGRAM")
     {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
         if (hasCompiled == GL_FALSE)
         {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+            glGetShaderInfoLog(shader, LOG_LENGTH, NULL, infoLog);
             std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n"
                       << infoLog << std::endl;
         }
@@ -95,7 +96,7 @@ void Shader::compileErrors(unsigned int shader, const char *type)
         glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
         if (hasCompiled == GL_FALSE)
         {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+            glGetProgramInfoLog(shader, LOG_LENGTH, NULL, infoLog);
             std::cout << "SHADER_LINKING_ERROR for:" << type << "\n"
                       << infoLog << std::endl;
         }
