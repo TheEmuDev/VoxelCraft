@@ -11,6 +11,7 @@
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
+#include "camera.h"
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -21,20 +22,18 @@ const unsigned int height = 800;
 const std::string shadersPath = "\\resources\\shaders\\";
 const std::string texturesPath = "\\resources\\textures\\";
 
-float dltRot = 0.5f;
-
 vec3 yUp = {0.0f, 1.0f, 0.0f};
 vec3 temp = {0.0f, -0.5f, -2.0f};
+vec3 zUp = {0.0f, 0.0f, 2.0f};
 
 // Vertice Coordinates
 GLfloat vertices[] =
     {
-        -0.5f, 0.0f,  0.5f,      0.83f, 0.70f, 0.44f,     0.0f, 0.0f,
-        -0.5f, 0.0f, -0.5f,      0.83f, 0.70f, 0.44f,     5.0f, 0.0f,
-         0.5f, 0.0f, -0.5f,      0.83f, 0.70f, 0.44f,     0.0f, 0.0f,
-         0.5f, 0.0f,  0.5f,      0.83f, 0.70f, 0.44f,     5.0f, 0.0f,
-         0.0f, 0.8f,  0.0f,      0.92f, 0.86f, 0.76f,     2.5f, 5.0f
-    };
+        -0.5f, 0.0f, 0.5f, 0.83f, 0.70f, 0.44f, 0.0f, 0.0f,
+        -0.5f, 0.0f, -0.5f, 0.83f, 0.70f, 0.44f, 5.0f, 0.0f,
+        0.5f, 0.0f, -0.5f, 0.83f, 0.70f, 0.44f, 0.0f, 0.0f,
+        0.5f, 0.0f, 0.5f, 0.83f, 0.70f, 0.44f, 5.0f, 0.0f,
+        0.0f, 0.8f, 0.0f, 0.92f, 0.86f, 0.76f, 2.5f, 5.0f};
 
 // Indices for vertices order
 GLuint indices[] =
@@ -44,8 +43,7 @@ GLuint indices[] =
         0, 1, 4,
         1, 2, 4,
         2, 3, 4,
-        3, 0, 4
-};
+        3, 0, 4};
 
 int main()
 {
@@ -119,11 +117,9 @@ int main()
     Texture testImage(texPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
     testImage.TexUnit(shaderProgram, "tex0", 0);
 
-    float rotation = 0.0f;
-    
-    double prevTime = glfwGetTime();
-
     glEnable(GL_DEPTH_TEST);
+
+    Camera camera(width, height, zUp);
 
     // Main while loop
     while (!glfwWindowShouldClose(window))
@@ -137,36 +133,16 @@ int main()
         // Tell OpenGL which Shader Program to use
         shaderProgram.Activate();
 
-        double currentTime = glfwGetTime();
-        if(currentTime - prevTime >= 1/60)
-        {
-            rotation += dltRot;
-            prevTime = currentTime;
-        }
+        camera.Inputs(window);
 
-        mat4 model = GLM_MAT4_IDENTITY_INIT;
-        mat4 view = GLM_MAT4_IDENTITY_INIT;
-        mat4 proj = GLM_MAT4_IDENTITY_INIT;
+        camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
 
-        glm_rotate(model, glm_rad(rotation), yUp);
-        glm_translate(view, temp);
-        glm_perspective(glm_rad(45.0f), (float)width/height, 0.1f, 100.0f, proj);
-
-        int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model[0]);
-        int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view[0]);
-        int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, proj[0]);
-
-        // Assigns a value to the uniform; NOTE: Must always be done after activating the shader program
-        glUniform1f(uniID, 0.5f);
         // Binds texture so that it appears in rendering
         testImage.Bind();
         // Binds the VAO so OpenGL knows to use it
         VAO1.Bind();
         // Draw primitives, number of indices, datatype of indices, index of indices
-        glDrawElements(GL_TRIANGLES, sizeof(indices)/sizeof(int), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
         // Swap the back buffer with the front buffer
         glfwSwapBuffers(window);
         // take care of all GLFW events
@@ -193,16 +169,6 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
-        dltRot = -0.5f;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
-        dltRot = 0.5f;
     }
 }
 

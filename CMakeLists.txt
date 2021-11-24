@@ -9,6 +9,7 @@ add_executable(${PROJECT_NAME} main.cpp
     buffers/src/VAO.cpp
     buffers/src/VBO.cpp
     texture.cpp
+    camera/src/camera.cpp
 )
 
 add_subdirectory(external/glfw)
@@ -21,6 +22,7 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC external/glad/include
     PUBLIC shader/include
     PUBLIC buffers/include
+    PUBLIC camera/include
 )
 
 target_link_directories(${PROJECT_NAME}
@@ -29,6 +31,7 @@ target_link_directories(${PROJECT_NAME}
     PUBLIC external/glad/src
     PUBLIC shader/src
     PUBLIC buffers/src
+    PUBLIC camera/src
 )
 
 target_link_libraries(${PROJECT_NAME} glfw m cglm stb)
