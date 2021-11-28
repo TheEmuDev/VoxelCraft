@@ -6,12 +6,7 @@
 #include <cglm/cglm.h>
 #include <cglm/struct.h>
 
-#include "texture.h"
-#include "shaderClass.h"
-#include "VAO.h"
-#include "VBO.h"
-#include "EBO.h"
-#include "camera.h"
+#include "mesh.h"
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -22,28 +17,52 @@ const unsigned int height = 800;
 const std::string shadersPath = "\\resources\\shaders\\";
 const std::string texturesPath = "\\resources\\textures\\";
 
-vec3 yUp = {0.0f, 1.0f, 0.0f};
-vec3 temp = {0.0f, -0.5f, -2.0f};
-vec3 zUp = {0.0f, 0.0f, 2.0f};
+// get path to this project
+std::string parentPath = std::filesystem::current_path().parent_path().string();
 
-// Vertice Coordinates
-GLfloat vertices[] =
-    {
-        -0.5f, 0.0f, 0.5f, 0.83f, 0.70f, 0.44f, 0.0f, 0.0f,
-        -0.5f, 0.0f, -0.5f, 0.83f, 0.70f, 0.44f, 5.0f, 0.0f,
-        0.5f, 0.0f, -0.5f, 0.83f, 0.70f, 0.44f, 0.0f, 0.0f,
-        0.5f, 0.0f, 0.5f, 0.83f, 0.70f, 0.44f, 5.0f, 0.0f,
-        0.0f, 0.8f, 0.0f, 0.92f, 0.86f, 0.76f, 2.5f, 5.0f};
+// Vertices coordinates
+Vertex vertices[] =
+    { //       /    COORDINATES    /        COLORS      /    TexCoord      /    NORMALS   //
+        Vertex{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+        Vertex{{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+        Vertex{{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+        Vertex{{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}
+    };
 
 // Indices for vertices order
 GLuint indices[] =
     {
         0, 1, 2,
+        0, 2, 3
+    };
+
+Vertex lightVertices[] =
+    {
+        Vertex{{-0.1f, -0.1f, 0.1f}},
+        Vertex{{-0.1f, -0.1f, -0.1f}},
+        Vertex{{0.1f, -0.1f, -0.1f}},
+        Vertex{{0.1f, -0.1f, 0.1f}},
+        Vertex{{-0.1f, 0.1f, 0.1f}},
+        Vertex{{-0.1f, 0.1f, -0.1f}},
+        Vertex{{0.1f, 0.1f, -0.1f}},
+        Vertex{{0.1f, 0.1f, 0.1f}}
+    };
+
+GLuint lightIndices[] =
+    {
+        0, 1, 2,
         0, 2, 3,
-        0, 1, 4,
-        1, 2, 4,
-        2, 3, 4,
-        3, 0, 4};
+        0, 4, 7,
+        0, 7, 3,
+        3, 7, 6,
+        3, 6, 2,
+        2, 6, 5,
+        2, 5, 1,
+        1, 5, 4,
+        1, 4, 0,
+        4, 5, 6,
+        4, 6, 7
+    };
 
 int main()
 {
@@ -87,39 +106,58 @@ int main()
     // Specify the viewport of OpenGL in the Window
     // In this case the viewport goes from (0,0) to (800,800)
     glViewport(0, 0, width, height);
+    
+    std::cout << parentPath + texturesPath + "minecraft-wood-plank-texture.png" << std::endl;
+
+    // Textures
+    Texture textures[] = {
+        Texture((parentPath + texturesPath + "planks.png").c_str(), "diffuse", 0, GL_RGBA, GL_UNSIGNED_BYTE),
+        Texture((parentPath + texturesPath + "planksSpec.png").c_str(), "specular", 1, GL_RED, GL_UNSIGNED_BYTE)
+    };
 
     // Generates Shader object using shaders default.vert and default.frag
-    std::string parentPath = std::filesystem::current_path().parent_path().string();
     Shader shaderProgram((parentPath + shadersPath + "default.vert").c_str(), (parentPath + shadersPath + "default.frag").c_str());
+    // Store mesh data in vectors for the mesh
+    std::vector<Vertex> verts(vertices, vertices + sizeof(vertices)/sizeof(Vertex));
+    std::vector<GLuint> ind(indices, indices + sizeof(indices)/sizeof(GLuint));
+    std::vector<Texture> tex(textures, textures + sizeof(textures)/sizeof(Texture));
+    // Create floor mesh
+    Mesh floor(verts, ind, tex);
 
-    // Generates Vertex Array Object and binds it
-    VAO VAO1;
-    VAO1.Bind();
+    // Generates Shader object using shaders light.vert and light.frag
+    Shader lightShader((parentPath + shadersPath + "light.vert").c_str(), (parentPath + shadersPath + "light.frag").c_str());
+    // Store mesh data in vectors for mesh
+    std::vector<Vertex> lightVerts(lightVertices, lightVertices + sizeof(lightVertices)/sizeof(Vertex));
+    std::vector<GLuint> lightInd(lightIndices, lightIndices + sizeof(lightIndices)/sizeof(GLuint));
+    // create floor mesh
+    Mesh light(lightVerts, lightInd, tex);
 
-    // Generates Vertex Buffer Object and links it to vertices
-    VBO VBO1(vertices, sizeof(vertices));
+    vec4 lightColor = GLM_VEC4_ONE_INIT;
+    vec3 lightPos = {0.5f, 0.5f, 0.5f};
+    mat4 lightModel = GLM_MAT4_IDENTITY_INIT;
+    glm_translate(lightModel, lightPos);
 
-    // Generates Element Buffer Object and links it to indices
-    EBO EBO1(indices, sizeof(indices));
+    vec3 objectPos = GLM_VEC3_ZERO_INIT;
+    mat4 objectModel = GLM_MAT4_IDENTITY_INIT;
+    glm_translate(objectModel, objectPos);
 
-    // Links VBO to VAO
-    VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 8 * sizeof(float), (void *)0);
-    VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 8 * sizeof(float), (void *)(3 * sizeof(float)));
-    VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 8 * sizeof(float), (void *)(6 * sizeof(float)));
+    lightShader.Activate();
+    glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, lightModel[0]);
+    glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor[0], lightColor[1], lightColor[2], lightColor[3]);
+    shaderProgram.Activate();
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, objectModel[0]);
+    glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor[0], lightColor[1], lightColor[2], lightColor[3]);
+    glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos[0], lightPos[1], lightPos[2]);
 
-    VAO1.Unbind();
-    VBO1.Unbind();
-    EBO1.Unbind();
 
-    GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
-
-    std::string texPath = parentPath + texturesPath + "grass_block_test.png";
-    Texture testImage(texPath.c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
-    testImage.TexUnit(shaderProgram, "tex0", 0);
-
+    // Enables the depth buffer
     glEnable(GL_DEPTH_TEST);
+  
+    // position vector for camera object
+    vec3 position = {0.0f, 0.0f, 2.0f};
 
-    Camera camera(width, height, zUp);
+    // Creates camera object
+    Camera camera(width, height,position);
 
     // Main while loop
     while (!glfwWindowShouldClose(window))
@@ -130,30 +168,23 @@ int main()
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         // Clean the back buffer and assign the new color to it
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // Tell OpenGL which Shader Program to use
-        shaderProgram.Activate();
 
+        // Handles Camera Inputs
         camera.Inputs(window);
+        // Updates and exports the camera matrix to the Vertex Shader
+        camera.UpdateMatrix(45.0f, 0.1f, 100.0f);
 
-        camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
+       floor.Draw(shaderProgram, camera);
+       light.Draw(lightShader, camera);
 
-        // Binds texture so that it appears in rendering
-        testImage.Bind();
-        // Binds the VAO so OpenGL knows to use it
-        VAO1.Bind();
-        // Draw primitives, number of indices, datatype of indices, index of indices
-        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
         // Swap the back buffer with the front buffer
         glfwSwapBuffers(window);
         // take care of all GLFW events
         glfwPollEvents();
     }
 
-    VAO1.Delete();
-    VBO1.Delete();
-    EBO1.Delete();
-    testImage.Delete();
     shaderProgram.Delete();
+    lightShader.Delete();
 
     // Delete window before ending the program
     glfwDestroyWindow(window);

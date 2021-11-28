@@ -10,6 +10,7 @@ add_executable(${PROJECT_NAME} main.cpp
     buffers/src/VBO.cpp
     texture.cpp
     camera/src/camera.cpp
+    mesh.cpp
 )
 
 add_subdirectory(external/glfw)

@@ -13,6 +13,7 @@ class Camera
         vec3 Position;
         vec3 Orientation = {0.0f, 0.0f, -1.0f};
         vec3 Up = {0.0f, 1.0f, 0.0f};
+        mat4 cameraMatrix = GLM_MAT4_IDENTITY_INIT;
 
         bool firstClick = true;
 
@@ -24,7 +25,8 @@ class Camera
 
         Camera(int width, int height, vec3 position);
 
-        void Matrix(float FOVdeg, float nearPlane, float farPlane, Shader& shader, const char* uniform);
+        void UpdateMatrix(float FOVdeg, float nearPlane, float farPlane);
+        void Matrix(Shader& shader, const char* uniform);
         void Inputs(GLFWwindow* window);
 };
 

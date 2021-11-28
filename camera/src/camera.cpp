@@ -7,19 +7,23 @@ Camera::Camera(int width, int height, vec3 position)
     glm_vec3_dup(position, Position);
 }
 
-void Camera::Matrix(float FOVdeg, float nearPlane, float farPlane, Shader &shader, const char *uniform)
+void Camera::UpdateMatrix(float FOVdeg, float nearPlane, float farPlane)
 {
     mat4 view = GLM_MAT4_IDENTITY_INIT;
     mat4 projection = GLM_MAT4_IDENTITY_INIT;
-    mat4 tempMat4 = GLM_MAT4_IDENTITY_INIT;
+    mat4 newCamMatrix = GLM_MAT4_IDENTITY_INIT;
 
     vec3 temp;
     glm_vec3_add(Position, Orientation, temp);
     glm_lookat(Position, temp, Up, view);
     glm_perspective(glm_rad(FOVdeg), (float)(width / height), nearPlane, farPlane, projection);
-    glm_mat4_mul(projection, view, tempMat4);
+    glm_mat4_mul(projection, view, newCamMatrix);
+    glm_mat4_dup(newCamMatrix, cameraMatrix);
+}
 
-    glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, tempMat4[0]);
+void Camera::Matrix(Shader &shader, const char *uniform)
+{
+    glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, cameraMatrix[0]);
 }
 
 void Camera::Inputs(GLFWwindow *window)
@@ -119,7 +123,7 @@ void Camera::Inputs(GLFWwindow *window)
 
         glfwSetCursorPos(window, (width / 2), (height / 2));
     }
-    
+
     else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
