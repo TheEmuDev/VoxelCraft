@@ -5,9 +5,15 @@ Camera::Camera(int width, int height, vec3 position)
     Camera::width = width;
     Camera::height = height;
     glm_vec3_dup(position, Position);
+
+    speed = SPEED;
+    sensitivity = SENSITIVITY;
+    zoom = ZOOM;
+    yaw = YAW;
+    pitch = PITCH;
 }
 
-void Camera::UpdateMatrix(float FOVdeg, float nearPlane, float farPlane)
+void Camera::UpdateMatrix(float nearPlane, float farPlane)
 {
     mat4 view = GLM_MAT4_IDENTITY_INIT;
     mat4 projection = GLM_MAT4_IDENTITY_INIT;
@@ -15,8 +21,8 @@ void Camera::UpdateMatrix(float FOVdeg, float nearPlane, float farPlane)
 
     vec3 temp;
     glm_vec3_add(Position, Orientation, temp);
-    glm_lookat(Position, temp, Up, view);
-    glm_perspective(glm_rad(FOVdeg), (float)(width / height), nearPlane, farPlane, projection);
+    glm_lookat(Position, temp, CameraUp, view);
+    glm_perspective(glm_rad(zoom), (float)width / height, nearPlane, farPlane, projection);
     glm_mat4_mul(projection, view, newCamMatrix);
     glm_mat4_dup(newCamMatrix, cameraMatrix);
 }
@@ -26,25 +32,54 @@ void Camera::Matrix(Shader &shader, const char *uniform)
     glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, cameraMatrix[0]);
 }
 
-void Camera::Inputs(GLFWwindow *window)
+void Camera::ProcessMouseMovement(float xOffset, float yOffset)
 {
+    xOffset *= sensitivity;
+    yOffset *= sensitivity;
+
+    yaw += xOffset;
+    pitch += yOffset;
+
+    if(pitch > 89.0f) pitch = 89.0f;
+    if(pitch < -89.0f) pitch = -89.0f;
+
+    vec3 newOrientation;
+    newOrientation[0] = cos(glm_rad(yaw)) * cos(glm_rad(pitch));
+    newOrientation[1] = sin(glm_rad(pitch));
+    newOrientation[2] = sin(glm_rad(yaw)) * cos(glm_rad(pitch));
+    glm_normalize_to(newOrientation, Orientation);
+
+    glm_vec3_cross(Orientation, WorldUp, Right);
+    glm_normalize(Right);
+
+    glm_vec3_cross(Right, Orientation, CameraUp);
+    glm_normalize(CameraUp);
+}
+
+void Camera::ProcessKeyboardInputs(GLFWwindow *window, float deltaTime)
+{
+
+
+    // move forward
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        vec3 ScaledVec;
-        glm_vec3_scale(Orientation, speed, ScaledVec);
-        glm_vec3_add(Position, ScaledVec, Position);
+        vec3 frontVelocity;
+        glm_vec3_scale(Orientation, speed, frontVelocity);
+        glm_vec3_add(Position, frontVelocity, Position);
     }
 
+    // move left
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        vec3 Cross;
-        glm_vec3_cross(Orientation, Up, Cross);
-        glm_vec3_normalize(Cross);
-        glm_vec3_negate(Cross);
-        glm_vec3_scale(Cross, speed, Cross);
-        glm_vec3_add(Position, Cross, Position);
+
+        glm_vec3_cross(Orientation, WorldUp, Right);
+        glm_vec3_normalize(Right);
+        glm_vec3_negate(Right);
+        glm_vec3_scale(Right, speed, Right);
+        glm_vec3_add(Position, Right, Position);
     }
 
+    // move backward
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
         vec3 Temp;
@@ -53,81 +88,40 @@ void Camera::Inputs(GLFWwindow *window)
         glm_vec3_add(Position, Temp, Position);
     }
 
+    // move right
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
         vec3 Cross;
-        glm_vec3_cross(Orientation, Up, Cross);
+        glm_vec3_cross(Orientation, CameraUp, Cross);
         glm_vec3_normalize(Cross);
         glm_vec3_scale(Cross, speed, Cross);
         glm_vec3_add(Position, Cross, Position);
     }
 
+    // move up (camera perspective)
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     {
         vec3 ScaledVec;
-        glm_vec3_scale(Up, speed, ScaledVec);
+        glm_vec3_scale(CameraUp, speed, ScaledVec);
         glm_vec3_add(Position, ScaledVec, Position);
     }
 
+    // move down (camera perspective)
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
     {
         vec3 ScaledVec;
-        glm_vec3_scale(Up, speed, ScaledVec);
+        glm_vec3_scale(CameraUp, speed, ScaledVec);
         glm_vec3_negate(ScaledVec);
         glm_vec3_add(Position, ScaledVec, Position);
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
     {
-        speed = 0.4f;
+        speed = 4 * SPEED;
     }
 
     else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
     {
-        speed = 0.1f;
-    }
-
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-
-        if (firstClick)
-        {
-            glfwSetCursorPos(window, (width / 2), (height / 2));
-            firstClick = false;
-        }
-
-        double mouseX;
-        double mouseY;
-
-        glfwGetCursorPos(window, &mouseX, &mouseY);
-
-        float rotX = sensitivity * (float)(mouseY - (height / 2)) / height;
-        float rotY = sensitivity * (float)(mouseX - (height / 2)) / width;
-
-        // glm::vec3 newOrientation = glm::rotate(Orientation, glm::radians(-rotX), glm::normalize(glm::cross(Orientation, Up)));
-        vec3 NewOrientation;
-        glm_vec3_dup(Orientation, NewOrientation);
-
-        vec3 Cross;
-        glm_vec3_cross(Orientation, Up, Cross);
-        glm_vec3_normalize(Cross);
-        glm_vec3_rotate(NewOrientation, glm_rad(-rotX), Cross);
-
-        if (abs(glm_vec3_angle(NewOrientation, Up) - glm_rad(90.0f)) <= glm_rad(85.0f))
-        {
-            glm_vec3_dup(NewOrientation, Orientation);
-        }
-
-        glm_vec3_rotate(Orientation, glm_rad(-rotY), Up);
-
-        glfwSetCursorPos(window, (width / 2), (height / 2));
-    }
-
-    else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
-        firstClick = true;
+        speed = SPEED;
     }
 }

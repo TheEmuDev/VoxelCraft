@@ -8,14 +8,33 @@
 
 #include "mesh.h"
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_callback(GLFWwindow* window, double xPos, double yPos);
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 
-const unsigned int width = 800;
-const unsigned int height = 800;
+const unsigned int SCREEN_WIDTH = 800;
+const unsigned int SCREEN_HEIGHT = 600;
 
 const std::string shadersPath = "\\resources\\shaders\\";
 const std::string texturesPath = "\\resources\\textures\\";
+const std::string WINDOW_TITLE = "VoxelCraft";
+
+// position vector for camera object
+vec3 position = {0.0f, 1.0f, 2.0f};
+
+// Creates camera object
+Camera camera(SCREEN_WIDTH, SCREEN_HEIGHT, position);
+
+bool renderAsWireframe = false;
+bool firstMouse = true;
+
+double previousTime = 0.0;
+double currentTime = 0.0;
+double deltaTime;
+
+float lastX = SCREEN_WIDTH / 2;
+float lastY = SCREEN_HEIGHT / 2;
 
 // get path to this project
 std::string parentPath = std::filesystem::current_path().parent_path().string();
@@ -82,8 +101,8 @@ int main()
     // This means we are only using the modern functions
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create window object with length and width of 500 pixels and the name "VoxelCraft"
-    GLFWwindow *window = glfwCreateWindow(width, height, "VoxelCraft", NULL, NULL);
+    // Create window object
+    GLFWwindow *window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE.c_str(), NULL, NULL);
 
     // If window object fails to initialize,
     // Exit with error message and -1 return code if initialization fails
@@ -96,18 +115,23 @@ int main()
 
     // Introduce window into current context
     glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // Set callback method to be called everytime window is resized
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    // Set callback method to be called everytime key event is created
+    glfwSetKeyCallback(window, key_callback);
+    // Set callback method to be called everytime the mouse position changes
+    glfwSetCursorPosCallback(window, mouse_callback);
+    // Set callback method to be called when the scroll wheel is used
+    glfwSetScrollCallback(window, scroll_callback);
 
     //Load GLAD so it configures OpenGL
     gladLoadGL();
 
     // Specify the viewport of OpenGL in the Window
     // In this case the viewport goes from (0,0) to (800,800)
-    glViewport(0, 0, width, height);
-    
-    std::cout << parentPath + texturesPath + "minecraft-wood-plank-texture.png" << std::endl;
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Textures
     Texture textures[] = {
@@ -152,17 +176,27 @@ int main()
 
     // Enables the depth buffer
     glEnable(GL_DEPTH_TEST);
-  
-    // position vector for camera object
-    vec3 position = {0.0f, 0.0f, 2.0f};
 
-    // Creates camera object
-    Camera camera(width, height,position);
+    unsigned int frameCounter = 0;
 
     // Main while loop
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window);
+        currentTime = glfwGetTime();
+        deltaTime = currentTime - previousTime;
+        frameCounter++;
+
+        if(deltaTime >= 1.0/3.0)
+        {
+            std::string FPS = std::to_string((1.0 / deltaTime) * frameCounter);
+            std::string ms = std::to_string((deltaTime / frameCounter) * 1000);
+            std::string stats = " - " + FPS + "FPS / " + ms + "ms";
+
+            glfwSetWindowTitle(window, (WINDOW_TITLE + stats).c_str());
+
+            previousTime = currentTime;
+            frameCounter = 0;
+        }
 
         // Specify the color of the background
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -170,9 +204,9 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Handles Camera Inputs
-        camera.Inputs(window);
+        camera.ProcessKeyboardInputs(window, deltaTime);
         // Updates and exports the camera matrix to the Vertex Shader
-        camera.UpdateMatrix(45.0f, 0.1f, 100.0f);
+        camera.UpdateMatrix(0.1f, 100.0f);
 
        floor.Draw(shaderProgram, camera);
        light.Draw(lightShader, camera);
@@ -194,17 +228,49 @@ int main()
     return 0;
 }
 
-// Handle input events
-void processInput(GLFWwindow *window)
+// update the viewport after window changes size
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    glViewport(0, 0, width, height);
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if(action == GLFW_RELEASE) return;
+    if(key == GLFW_KEY_F1)
+    {
+        renderAsWireframe = !renderAsWireframe;
+        unsigned int renderMode;
+
+        (renderAsWireframe) ? renderMode = GL_LINE : renderMode = GL_FILL;
+        glPolygonMode(GL_FRONT_AND_BACK, renderMode);
+    }
+
+    if(key == GLFW_KEY_ESCAPE)
     {
         glfwSetWindowShouldClose(window, true);
     }
 }
 
-// update the viewport after window changes size
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+void mouse_callback(GLFWwindow* window, double xPos, double yPos)
 {
-    glViewport(0, 0, width, height);
+    if(firstMouse)
+    {
+        lastX = xPos;
+        lastY = yPos;
+        firstMouse = false;
+    }
+
+    float xOffset = xPos - lastX;
+    float yOffset = lastY - yPos;   // reversed because y-coordinates go from bottom to top
+
+    lastX = xPos;
+    lastY = yPos;
+
+    camera.ProcessMouseMovement(xOffset, yOffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
+{
+
 }
