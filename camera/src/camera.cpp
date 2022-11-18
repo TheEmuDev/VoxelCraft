@@ -56,10 +56,15 @@ void Camera::ProcessMouseMovement(float xOffset, float yOffset)
     glm_normalize(CameraUp);
 }
 
+void Camera::ProcessMouseScroll(float yOffset)
+{
+    zoom -= (float)yOffset;
+    if(zoom < 1.0f) zoom = 1.0f;
+    if(zoom > 45.0f) zoom = 45.0f;
+}
+
 void Camera::ProcessKeyboardInputs(GLFWwindow *window, float deltaTime)
 {
-
-
     // move forward
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {

@@ -272,5 +272,5 @@ void mouse_callback(GLFWwindow* window, double xPos, double yPos)
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
 {
-
+    camera.ProcessMouseScroll(yOffset);
 }
